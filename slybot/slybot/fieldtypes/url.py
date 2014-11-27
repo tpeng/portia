@@ -18,3 +18,6 @@ class UrlFieldTypeProcessor(object):
         joined = urljoin(get_base_url(htmlpage).encode(htmlpage.encoding), text)
         return safe_download_url(unquote_markup(joined, encoding=htmlpage.encoding))
 
+class TemplateFieldTypeProcessor(UrlFieldTypeProcessor):
+    name = 'template'
+    description = 'template'

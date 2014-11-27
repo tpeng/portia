@@ -17,7 +17,7 @@ from .text import (
     SafeHtmlFieldTypeProcessor
 )
 from .images import ImagesFieldTypeProcessor
-from .url import UrlFieldTypeProcessor
+from .url import UrlFieldTypeProcessor, TemplateFieldTypeProcessor
 from .number import NumberTypeProcessor
 from .point import GeoPointFieldTypeProcessor
 from .price import PriceTypeProcessor
@@ -28,6 +28,7 @@ class FieldTypeManager(object):
         ImagesFieldTypeProcessor, NumberTypeProcessor,
         UrlFieldTypeProcessor, SafeHtmlFieldTypeProcessor,
         GeoPointFieldTypeProcessor, PriceTypeProcessor,
+        TemplateFieldTypeProcessor,
     ))
     _names = sorted(_TYPEMAP.keys())
 

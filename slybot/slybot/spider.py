@@ -15,6 +15,7 @@ from scrapely.htmlpage import HtmlPage, dict_to_page
 from scrapely.extraction import InstanceBasedLearningExtractor
 
 from loginform import fill_login_form
+from inline_requests import inline_requests
 
 from slybot.item import SlybotItem, create_slybot_item_descriptor
 from slybot.extractors import apply_extractors
@@ -253,35 +254,76 @@ class IblSpider(Spider):
                 yield request
 
     def handle_html(self, response):
+        link_regions = []
         htmlpage = htmlpage_from_response(response)
-        items, link_regions = self.extract_items(htmlpage)
-        for item in items:
+        for item in self.handle_html2(response):
             yield item
+            # can be a Request for fetching children page
+            if isinstance(item, SlybotItem):
+                link_regions.extend(item.pop('_link_regions'))
         for request in self._process_link_regions(htmlpage, link_regions):
             yield request
 
-    def extract_items(self, htmlpage):
+    @inline_requests
+    def handle_html2(self, response):
+        htmlpage = htmlpage_from_response(response)
+        items = self.extract_items(htmlpage)
+
+        for item in items:
+            if response.meta.get('twisted_request'):
+                # running in poria, don't follow children template
+                templates = {}
+            else:
+                templates = item.get('_templates', {})
+
+            for template, urls in templates.iteritems():
+                for url in urls:
+                    self.log('fetch children page %s' % url)
+                    try:
+                        response = yield Request(url=url, dont_filter=True)
+                    except Exception as e:
+                        self.log(e)
+                    else:
+                        htmlpage = htmlpage_from_response(response)
+                        _items = self.extract_items(htmlpage, item_cls=template)
+                        # merge children items into base
+                        for _item in _items:
+                            for k, v in _item.iteritems():
+                                if not k.startswith('_') and k != 'url':
+                                    item[k] = v
+            yield item
+
+    def extract_items(self, htmlpage, item_cls='default'):
         """This method is also called from UI webservice to extract items"""
         items = []
-        link_regions = []
         for item_cls_name, info in self.itemcls_info.iteritems():
+            if item_cls and item_cls_name != item_cls:
+                continue
             item_descriptor = info['descriptor']
             extractor = info['extractor']
-            extracted, _link_regions = self._do_extract_items_from(
+            extracted = self._do_extract_items_from(
                     htmlpage,
                     item_descriptor,
                     extractor,
                     item_cls_name,
             )
             items.extend(extracted)
-            link_regions.extend(_link_regions)
-        return items, link_regions
+        return items
 
     def _do_extract_items_from(self, htmlpage, item_descriptor, extractor, item_cls_name):
         extracted_data, template = extractor.extract(htmlpage)
         link_regions = []
+        templates = {}
+        templates_types = [k for k, v in item_descriptor.attribute_map.iteritems() if v.field_type == 'template']
+
         for ddict in extracted_data or []:
             link_regions.extend(ddict.pop("_links", []))
+
+        for ddict in extracted_data or []:
+            for t in templates_types:
+                urls = [item_descriptor.attribute_map.get(t).adapt(x, htmlpage) for x in ddict.pop(t, [])]
+                templates.setdefault(t, []).extend(urls)
+
         processed_data = _process_extracted_data(extracted_data, item_descriptor, htmlpage)
         items = []
         item_cls = self.itemcls_info[item_cls_name]['class']
@@ -290,9 +332,13 @@ class IblSpider(Spider):
             item['url'] = htmlpage.url
             item['_type'] = item_cls_name
             item['_template'] = str(template.id)
+            item['_templates'] = templates
+            item['_link_regions'] = link_regions
+            # XXX: better way to destroy?
+            link_regions = []
             items.append(item)
 
-        return items, link_regions
+        return items
 
     def build_url_filter(self, spec):
         """make a filter for links"""

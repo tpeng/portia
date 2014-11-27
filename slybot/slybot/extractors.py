@@ -47,11 +47,12 @@ def apply_extractors(descriptor, template_extractors, extractors):
                 equeue.append(create_regex_extractor(extractor_doc["regular_expression"]))
             elif "type_extractor" in extractor_doc: # overrides default one
                 descriptor.attribute_map[field_name] = SlybotFieldDescriptor(field_name, 
-                    field_name, field_type_manager.type_processor_class(extractor_doc["type_extractor"])())
+                    field_name, extractor_doc["type_extractor"], 
+                    field_type_manager.type_processor_class(extractor_doc["type_extractor"])())
         if not field_name in descriptor.attribute_map:
             # if not defined type extractor, use text type by default, as it is by far the most commonly used
             descriptor.attribute_map[field_name] = SlybotFieldDescriptor(field_name, 
-                    field_name, field_type_manager.type_processor_class("text")())
+                    field_name, "text", field_type_manager.type_processor_class("text")())
             
         if equeue:
             equeue.insert(0, descriptor.attribute_map[field_name].extractor)

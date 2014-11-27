@@ -188,7 +188,8 @@ ASTool.TypeSelect = ASTool.Select.extend({
 			  { option: 'raw html', label: 'raw html' },
 			  { option: 'safe html', label: 'safe html' },
 			  { option: 'geopoint', label: 'geopoint' },
-			  { option: 'url', label: 'url' }],
+			  { option: 'url', label: 'url' },
+			  { option: 'template', label: 'template' }],
 });
 
 

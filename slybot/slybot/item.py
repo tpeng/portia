@@ -29,7 +29,7 @@ def create_slybot_item_descriptor(schema):
         required = pdict['required']
         pclass = field_type_manager.type_processor_class(pdict['type'])
         processor = pclass()
-        descriptor = SlybotFieldDescriptor(pname, pname, processor, required)
+        descriptor = SlybotFieldDescriptor(pname, pname, pdict['type'], processor, required)
         descriptors.append(descriptor)
     return ItemDescriptor("", "", descriptors)
 
@@ -38,7 +38,7 @@ class SlybotFieldDescriptor(FieldDescriptor):
     to be created from a slybot item schema
     """
 
-    def __init__(self, name, description, field_type_processor, required=False):
+    def __init__(self, name, description, field_type, field_type_processor, required=False):
         """Create a new SlybotFieldDescriptor with the given name and description. 
         The field_type_processor is used for extraction and is publicly available
         """
@@ -46,6 +46,7 @@ class SlybotFieldDescriptor(FieldDescriptor):
             field_type_processor.extract, required)
         # add an adapt method
         self.adapt = field_type_processor.adapt
+        self.field_type = field_type
 
 def create_item_version(item):
     """Item version based on hashlib.sha1 algorithm"""
